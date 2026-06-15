@@ -1543,7 +1543,7 @@
         });
 
         const osSelect = document.getElementById('os');
-        const osButtons = document.querySelectorAll('.os-option');
+        const osButtons = document.querySelectorAll('.os-option[data-os-value]');
 
         function syncOsButtons(value) {
             osButtons.forEach(button => {
@@ -1792,36 +1792,62 @@
             }, 100);
         });
 
-        document.querySelectorAll('.os-option[data-checkbox-id]').forEach(btn => {
+        // ─── Архитектура: radio-поведение (выбор одного, нельзя снять все) ───
+        const architectureIds = ['architecture-a', 'architecture-b', 'architecture-c'];
+
+        function setArchitecture(selectedId) {
+            architectureIds.forEach(id => {
+                const btn = document.querySelector(`.os-option[data-checkbox-id="${id}"]`);
+                const cb  = document.getElementById(id);
+                const active = (id === selectedId);
+                if (btn) {
+                    btn.classList.toggle('active', active);
+                    btn.setAttribute('aria-pressed', String(active));
+                }
+                if (cb) cb.checked = active;
+            });
+            // Показать/скрыть поле «свой вариант»
+            const customBlock = document.getElementById('custom-architecture');
+            if (customBlock) {
+                customBlock.classList.toggle('visible', selectedId === 'architecture-c');
+            }
+        }
+
+        architectureIds.forEach(id => {
+            const btn = document.querySelector(`.os-option[data-checkbox-id="${id}"]`);
+            if (!btn) return;
             btn.addEventListener('click', function() {
-                const checkboxId = this.getAttribute('data-checkbox-id');
+                setArchitecture(id);
+            });
+        });
+
+        // ─── Chassis (rack/tower) сервера и клиента: одиночный выбор с возможностью снять ───
+        document.querySelectorAll('.os-option[data-checkbox-id]').forEach(btn => {
+            const checkboxId = btn.getAttribute('data-checkbox-id');
+            // Пропускаем кнопки архитектуры — у них свой обработчик выше
+            if (architectureIds.includes(checkboxId)) return;
+
+            btn.addEventListener('click', function() {
                 const checkbox = document.getElementById(checkboxId);
                 if (!checkbox) return;
 
                 const isActive = this.classList.contains('active');
-                this.classList.toggle('active', !isActive);
-                this.setAttribute('aria-pressed', String(!isActive));
-                checkbox.checked = !isActive;
 
-                const name = checkbox.name;
-                if (name && (name.startsWith('chassis-') || name.startsWith('client-chassis-'))) {
-                    const parent = this.closest('.os-options');
-                    parent.querySelectorAll('.os-option[data-checkbox-id]').forEach(other => {
-                        if (other !== this) {
-                            other.classList.remove('active');
-                            other.setAttribute('aria-pressed', 'false');
-                            const otherId = other.getAttribute('data-checkbox-id');
-                            const otherCb = document.getElementById(otherId);
-                            if (otherCb) otherCb.checked = false;
-                        }
-                    });
-                }
+                // Снять все кнопки в той же группе
+                const parent = this.closest('.os-options');
+                parent.querySelectorAll('.os-option[data-checkbox-id]').forEach(other => {
+                    other.classList.remove('active');
+                    other.setAttribute('aria-pressed', 'false');
+                    const otherId = other.getAttribute('data-checkbox-id');
+                    const otherCb = document.getElementById(otherId);
+                    if (otherCb) otherCb.checked = false;
+                });
 
-                if (checkboxId === 'architecture-c') {
-                    const customBlock = document.getElementById('custom-architecture');
-                    if (customBlock) {
-                        customBlock.classList.toggle('visible', !isActive);
-                    }
+                // Если кнопка не была активна — активировать её
+                if (!isActive) {
+                    this.classList.add('active');
+                    this.setAttribute('aria-pressed', 'true');
+                    checkbox.checked = true;
                 }
             });
         });
